@@ -1,0 +1,102 @@
+rdtscp:
+        push    rbp
+        mov     rbp, rsp
+        mov     eax, DWORD PTR [rbp-4]
+        rdtscp
+        mov     DWORD PTR [rbp-4], eax
+        mov     DWORD PTR [rbp-8], edx
+        mov     eax, DWORD PTR [rbp-8]
+        sal     rax, 32
+        mov     rdx, rax
+        mov     eax, DWORD PTR [rbp-4]
+        or      rax, rdx
+        pop     rbp
+        ret
+.LC0:
+        .string "[+] Allocate Memory for 256 pages"
+.LC1:
+        .string "[+] Flush the 256 pages out of the cache"
+.LC2:
+        .string "accessing page %02d in %lu cycles \n"
+main:
+        push    rbp
+        mov     rbp, rsp
+        sub     rsp, 80
+        mov     DWORD PTR [rbp-68], edi
+        mov     QWORD PTR [rbp-80], rsi
+        mov     edi, OFFSET FLAT:.LC0
+        call    puts
+        mov     r9d, 0
+        mov     r8d, -1
+        mov     ecx, 34
+        mov     edx, 3
+        mov     esi, 1048576
+        mov     edi, 0
+        call    mmap
+        mov     QWORD PTR [rbp-32], rax
+        mov     rax, QWORD PTR [rbp-32]
+        mov     edx, 1048576
+        mov     esi, 0
+        mov     rdi, rax
+        call    memset
+        mov     edi, OFFSET FLAT:.LC1
+        call    puts
+        mov     QWORD PTR [rbp-8], 0
+        jmp     .L4
+.L5:
+        mov     rax, QWORD PTR [rbp-8]
+        sal     rax, 12
+        mov     rdx, rax
+        mov     rax, QWORD PTR [rbp-32]
+        add     rax, rdx
+        mov     QWORD PTR [rbp-64], rax
+        mov     rax, QWORD PTR [rbp-64]
+        clflush [rax]
+        nop
+        add     QWORD PTR [rbp-8], 1
+.L4:
+        cmp     QWORD PTR [rbp-8], 255
+        jbe     .L5
+        mfence
+        nop
+        mov     rax, QWORD PTR [rbp-32]
+        add     rax, 172032
+        mov     BYTE PTR [rax], -1
+        mov     QWORD PTR [rbp-40], 0
+        mov     eax, 4294967295
+        mov     QWORD PTR [rbp-16], rax
+        mov     QWORD PTR [rbp-24], 0
+        jmp     .L6
+.L8:
+        call    rdtscp
+        mov     QWORD PTR [rbp-48], rax
+        mov     rax, QWORD PTR [rbp-24]
+        sal     rax, 12
+        mov     rdx, rax
+        mov     rax, QWORD PTR [rbp-32]
+        add     rax, rdx
+        movzx   eax, BYTE PTR [rax]
+        call    rdtscp
+        sub     rax, QWORD PTR [rbp-48]
+        mov     QWORD PTR [rbp-56], rax
+        mov     rax, QWORD PTR [rbp-56]
+        cmp     rax, QWORD PTR [rbp-16]
+        jnb     .L7
+        mov     rax, QWORD PTR [rbp-56]
+        mov     QWORD PTR [rbp-16], rax
+        mov     rax, QWORD PTR [rbp-24]
+        mov     QWORD PTR [rbp-40], rax
+.L7:
+        mov     rdx, QWORD PTR [rbp-56]
+        mov     rax, QWORD PTR [rbp-24]
+        mov     rsi, rax
+        mov     edi, OFFSET FLAT:.LC2
+        mov     eax, 0
+        call    printf
+        add     QWORD PTR [rbp-24], 1
+.L6:
+        cmp     QWORD PTR [rbp-24], 255
+        jbe     .L8
+        mov     eax, 0
+        leave
+        ret
